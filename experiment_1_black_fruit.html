@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MHCI experiment</title>
+  <script src="https://unpkg.com/jspsych@7.3.0"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-image-keyboard-response"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-survey-multi-choice"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response"></script>
+  <script src="https://unpkg.com/@jspsych/plugin-html-button-response"></script>
+  <link href="https://unpkg.com/jspsych@7.3.0/css/jspsych.css" rel="stylesheet">
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+    #jspsych-target {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100%;
+      text-align: center;
+    }
+    #end-button {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      z-index: 10000;
+      display: none;
+    }
+    .jspsych-survey-multi-choice-question {
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="jspsych-target"></div>
+  <button id="end-button">中止實驗</button>
+
+<script>
+  let experimentEndedEarly = false;
+  let endPressedTime = null;
+  let blackScreenStartTime = null;
+
+  const endButton = document.getElementById('end-button');
+  endButton.onclick = () => {
+    experimentEndedEarly = true;
+    endPressedTime = performance.now();
+
+    const pressedDuringBlack = (blackScreenStartTime !== null);
+    const blackDelta = pressedDuringBlack
+      ? Math.round(endPressedTime - blackScreenStartTime)
+      : null;
+
+    jsPsych.data.addProperties({
+      ended_early: true,
+      during_black_screen: pressedDuringBlack,
+      black_screen_time_ms: blackDelta,
+      total_time_ms: Math.round(jsPsych.getTotalTime())
+    });
+
+    const csv = jsPsych.data.get().csv();
+    jsPsych.endExperiment(`<h1>實驗完成</h1><p>你已提前結束實驗</p><button id="download">下載資料</button>`);
+
+    setTimeout(() => {
+  document.getElementById('download').onclick = () => {
+    const csv = jsPsych.data.get().csv();
+    const blob = new Blob([csv], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "experiment_result.csv";
+    a.click();
+  };
+}, 50);
+  };
+
+  const jsPsych = initJsPsych({
+    display_element: 'jspsych-target',
+    on_finish: () => {}
+  });
+
+  const timeline = [];
+  timeline.push({
+  type: jsPsychHtmlButtonResponse,
+  stimulus: `
+    <div style="max-width: 700px; margin: auto; font-size: 18px; text-align: left; line-height: 1.6;">
+      <h2 style="text-align: center;">感謝您參與本次實驗！</h2>
+      <p>本實驗旨在了解人們在圖像記憶情境下的答題反應。整體流程如下：</p>
+      <ol>
+        <li>您將觀看一張圖片五秒鐘</li>
+        <li>接著需回答與圖片相關的 10 道單選題</li>
+        <li>作答過程中，您可隨時點選「中止作答」按鈕，立即停止實驗</li>
+      </ol>
+      <h3>重要提醒：</h3>
+      <ul>
+        <li>為避免干擾，實驗進行期間實驗人員將不在場，請依照電腦指示進行操作</li>
+        <li>本實驗所蒐集之資料僅用於學術研究，請您放心參與</li>
+      </ul>
+      <p style="margin-top: 30px;">點選「開始實驗」後，即代表您同意參與本次實驗。</p>
+    </div>
+  `,
+  choices: ['開始實驗']
+});
+
+  timeline.push({
+    type: jsPsychImageKeyboardResponse,
+    stimulus: 'fruit.jpg',
+    stimulus_height: 600,
+    choices: "NO_KEYS",
+    trial_duration: 5000
+  });
+
+  const fruit_questions = [
+    { prompt: '阿婆戴的帽子是什麼顏色的？', options: ['A. 全橘色', 'B. 橘色和紅色', 'C. 橘色和綠色', 'D. 全綠色']},
+    { prompt: '阿婆穿著什麼顏色的上衣？', options: ['A. 紅色', 'B. 綠色', 'C. 藍色', 'D. 橘色']},
+    { prompt: '阿婆沒有賣什麼水果？', options: ['A. 橘子', 'B. 蘋果', 'C. 草莓', 'D. 西瓜']},
+    { prompt: '價錢是怎麼標示的？', options: ['A. 白底黑字紙卡', 'B. 彩色手寫看板', 'C. 沒有價錢標示', 'D. 直接貼在水果上']},
+    { prompt: '香蕉放在哪裡？', options: ['A. 阿婆正前方', 'B. 阿婆最右手邊', 'C. 阿婆最左手邊', 'D. 阿婆頭上掛著']},
+    { prompt: '最上排帳篷的顏色是？', options: ['A. 紅白相間', 'B. 橘黃相間', 'C. 綠白相間', 'D. 黃紫相間']},
+    { prompt: '阿婆後方的天空有幾片雲？', options: ['A. 1片', 'B. 2片', 'C. 3片', 'D. 4片']},
+    { prompt: '阿婆的頭髮是什麼顏色？', options: ['A. 黑色', 'B. 沒看到頭髮', 'C. 白色', 'D. 棕色']},
+    { prompt: '阿婆所穿的圍裙顏色是什麼？', options: ['A. 紅色', 'B. 藍色', 'C. 綠色', 'D. 黑色']},
+    { prompt: '以下哪一種水果在畫面中沒有出現？', options: ['A. 西瓜', 'B. 鳳梨', 'C. 蘋果', 'D. 橘子']}
+  ];
+
+  fruit_questions.slice(0, 6).forEach((q, i) => {
+    timeline.push({
+      type: jsPsychSurveyMultiChoice,
+      questions: [{
+        prompt: `問題 ${i + 1}：${q.prompt}`,
+        name: `q${i + 1}`,
+        options: q.options,
+        required: true
+      }],
+      on_start: () => { endButton.style.display = 'block'; }
+    });
+  });
+
+  timeline.push({
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: '',
+    trial_duration: 15000,
+    choices: "NO_KEYS",
+    on_start: () => {
+      document.body.style.backgroundColor = 'black';
+      endButton.style.display = 'block';
+      blackScreenStartTime = performance.now();
+    },
+    on_finish: () => {
+      document.body.style.backgroundColor = '';
+      blackScreenStartTime = null;
+    }
+  });
+
+  fruit_questions.slice(6, 9).forEach((q, i) => {
+    timeline.push({
+      type: jsPsychSurveyMultiChoice,
+      questions: [{
+        prompt: `問題 ${i + 7}：${q.prompt}`,
+        name: `q${i + 7}`,
+        options: q.options,
+        required: true
+      }],
+      on_start: () => { endButton.style.display = 'block'; }
+    });
+  });
+
+  timeline.push({
+    type: jsPsychSurveyMultiChoice,
+    questions: [{
+      prompt: `問題 10：${fruit_questions[9].prompt}`,
+      name: `q10`,
+      options: fruit_questions[9].options,
+      required: true
+    }],
+    on_start: () => { endButton.style.display = 'none'; }
+  });
+
+  const correct_answers = ["B", "B", "C", "C", "A", "B", "B", "C", "A", "B"];
+
+  timeline.push({
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: function() {
+      if (experimentEndedEarly) return "";
+      const data = jsPsych.data.get().values();
+      let score = 0;
+      let question_idx = 0;
+      data.forEach(trial => {
+        if (trial.response) {
+          const responses = Object.values(trial.response);
+          responses.forEach(r => {
+            const selected = r.trim().charAt(0);
+            if (selected === correct_answers[question_idx]) {
+              score++;
+            }
+            question_idx++;
+          });
+        }
+      });
+      return `<h2 style=\"text-align: center; font-size: 32px;\">你的總分是 ${score} / 10 分</h2>`;
+    },
+    choices: "NO_KEYS",
+    trial_duration: null,
+    conditional_function: () => !experimentEndedEarly
+  });
+
+  timeline.push({
+    type: jsPsychHtmlButtonResponse,
+    stimulus: () => `<div style='text-align: center;'><h1>實驗完成</h1><p>${experimentEndedEarly ? "你已提前結束實驗" : "你已完成實驗"}</p></div>`,
+    choices: ['下載資料並結束'],
+    on_finish: () => {
+      const totalTime = Math.round(jsPsych.getTotalTime());
+      jsPsych.data.addProperties({
+        total_time_ms: totalTime,
+        ended_early: experimentEndedEarly
+      });
+      const csv = jsPsych.data.get().csv();
+      const blob = new Blob([csv], { type: "text/csv" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "experiment_result.csv";
+      a.click();
+    }
+  });
+
+  jsPsych.run(timeline);
+</script>
+</body>
+</html>
